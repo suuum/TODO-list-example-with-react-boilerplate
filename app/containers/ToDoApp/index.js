@@ -4,14 +4,14 @@
  *
  */
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { Helmet } from 'react-helmet';
 import { FormattedMessage } from 'react-intl';
 import { createStructuredSelector } from 'reselect';
 import { compose } from 'redux';
-
+import _ from 'lodash';
 import { useInjectSaga } from 'utils/injectSaga';
 import { useInjectReducer } from 'utils/injectReducer';
 import Button from 'components/Button';
@@ -21,17 +21,46 @@ import saga from './saga';
 import messages from './messages';
 import Div from './Div';
 import Input from './Input';
-import { addItemToToDoList } from './actions';
+import {
+  addItemToToDoList,
+  removeItemFromToDoList,
+  changeItemInDoList,
+  toggleItemEditMode,
+} from './actions';
 
-export function ToDoApp({ todoList, dispatch }) {
+const ToDoApp = ({
+  todoList,
+  itemText,
+  dispatch,
+  onAddItemToToDoList,
+  onRemoveItemFromToDoList,
+  onToggleItemEditMode,
+}) => {
   useInjectReducer({ key: 'toDoApp', reducer });
   useInjectSaga({ key: 'toDoApp', saga });
 
-  const [getItemValue, setItemValue] = useState('Hello Function Component!');
-  const handleChange = event => setItemValue(event.target.value);
-  const isEnabled = getItemValue.length > 0;
+  const [inputs, setInputs] = useState({ addNodeText: '' });
+  const [fields, setFields] = useState(todoList);
 
-  console.log('isEnabled', isEnabled);
+  function handleInputDynamicChange(i, event) {
+    const values = _.cloneDeep([...fields]);
+    values[i].text = event.target.value;
+    setFields(values);
+  }
+
+  const handleInputChange = event => {
+    event.persist();
+    setInputs(inputs => ({
+      ...inputs,
+      [event.target.name]: event.target.value,
+    }));
+  };
+
+  const isEnabled = inputs.addNodeText.length > 0;
+  useEffect(() => {
+    console.log('fields', fields);
+    setFields(todoList);
+  }, [todoList]);
 
   return (
     <div>
@@ -43,30 +72,60 @@ export function ToDoApp({ todoList, dispatch }) {
         <FormattedMessage {...messages.title} />
       </h1>
       <Div>
-        <Input type="text" value={getItemValue} onChange={handleChange} />
+        <Input
+          type="text"
+          name="addNodeText"
+          value={inputs.addNodeText}
+          onChange={handleInputChange}
+        />
         {isEnabled ? (
-          <Button
-            onClick={() => {
-              dispatch(
-                addItemToToDoList({ id: todoList.length, text: getItemValue }),
-              );
-              setItemValue('');
-            }}
-            disabled={isEnabled}
+          <button
+            type="button"
+            value={inputs.addNodeText}
+            onClick={onAddItemToToDoList}
           >
-            {' '}
             Add item
-          </Button>
+          </button>
         ) : (
-          <span>Elo</span>
+          ''
         )}
       </Div>
       <ul>
-        {todoList.map(item => (
+        {fields.map((item, listItemId) => (
           <li key={item.id}>
             <Div>
-              <span>{item.text}</span>
-              <Button>Remove</Button>
+              {!item.isEdit ? (
+                <Div>
+                  <span>{item.text}</span>
+                  <button
+                    type="button"
+                    value={item.id}
+                    onClick={onRemoveItemFromToDoList}
+                  >
+                    Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onToggleItemEditMode.bind(this, item.id, true)}
+                  >
+                    Update
+                  </button>
+                </Div>
+              ) : (
+                <Div>
+                  <Input
+                    type="text"
+                    value={item.text || ''}
+                    onChange={e => handleInputDynamicChange(listItemId, e)}
+                  />
+                  <button
+                    type="button"
+                    onClick={onToggleItemEditMode.bind(this, item.id, false)}
+                  >
+                    Save
+                  </button>
+                </Div>
+              )}
             </Div>
           </li>
         ))}
@@ -77,12 +136,15 @@ export function ToDoApp({ todoList, dispatch }) {
       <Div />
     </div>
   );
-}
+};
 
 ToDoApp.propTypes = {
   todoList: PropTypes.array,
   itemText: PropTypes.string,
   dispatch: PropTypes.func.isRequired,
+  onAddItemToToDoList: PropTypes.func,
+  onRemoveItemFromToDoList: PropTypes.func,
+  onToggleItemEditMode: PropTypes.func,
 };
 
 const mapStateToProps = createStructuredSelector({
@@ -90,7 +152,25 @@ const mapStateToProps = createStructuredSelector({
   itemText: makeSelectItemText(),
 });
 
-const withConnect = connect(mapStateToProps);
+function mapDispatchToProps(dispatch) {
+  return {
+    onAddItemToToDoList: evt => {
+      dispatch(addItemToToDoList(evt.currentTarget.value));
+    },
+    onRemoveItemFromToDoList: evt =>
+      dispatch(removeItemFromToDoList(evt.currentTarget.value)),
+    onChangeItemInToDoList: evt =>
+      dispatch(changeItemInDoList(evt.currentTarget.value)),
+    onToggleItemEditMode: (id, isEdit) =>
+      dispatch(toggleItemEditMode(id, isEdit)),
+    dispatch,
+  };
+}
+
+const withConnect = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+);
 
 export default compose(
   withConnect,
