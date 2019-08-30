@@ -20,7 +20,7 @@ export const initialState = {
 const toDoAppReducer = (state = initialState, action) =>
   produce(state, draft => {
     switch (action.type) {
-      case ADD_ITEM_TO_TODOLIST:
+      case ADD_ITEM_TO_TODOLIST: {
         let index = 1;
         if (draft.todoList.length > 0) {
           index =
@@ -32,6 +32,7 @@ const toDoAppReducer = (state = initialState, action) =>
 
         draft.todoList.push({ id: index, text: action.itemText });
         break;
+      }
       case REMOVE_ITEM_FROM_TODOLIST:
         draft.todoList.splice(
           draft.todoList.findIndex(el => el.id === +action.itemId),
@@ -39,11 +40,13 @@ const toDoAppReducer = (state = initialState, action) =>
         );
         break;
       case CHANGE_TODOLIST_ITEM:
-        draft.todoList.map(el => {
-          if (el.id === action.item.id) return action.item;
+        draft.todoList = draft.todoList.map(el => {
+          if (el.id === +action.item.id)
+            return { ...action.item, isEdit: action.isEdit };
 
           return el;
         });
+
         break;
       case TOGGLE_ITEM_EDIT_MODE:
         draft.todoList.map(el => {

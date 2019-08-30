@@ -2,7 +2,8 @@ import styled from 'styled-components';
 
 const Div = styled.div`
   display: flex;
-  justify-content: flex-start;
+  flex-flow: row nowrap;
+  width: 100%;
 `;
 
 export default Div;

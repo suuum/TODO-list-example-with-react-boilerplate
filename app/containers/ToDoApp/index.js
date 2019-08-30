@@ -27,20 +27,21 @@ import {
   changeItemInDoList,
   toggleItemEditMode,
 } from './actions';
+import DivSpaceBetween from './DivSpaceBetween';
 
 const ToDoApp = ({
   todoList,
-  itemText,
-  dispatch,
   onAddItemToToDoList,
   onRemoveItemFromToDoList,
   onToggleItemEditMode,
+  onChangeItemInToDoList,
 }) => {
   useInjectReducer({ key: 'toDoApp', reducer });
   useInjectSaga({ key: 'toDoApp', saga });
 
   const [inputs, setInputs] = useState({ addNodeText: '' });
   const [fields, setFields] = useState(todoList);
+  const isHidden = inputs.addNodeText.length === 0;
 
   function handleInputDynamicChange(i, event) {
     const values = _.cloneDeep([...fields]);
@@ -56,11 +57,20 @@ const ToDoApp = ({
     }));
   };
 
-  const isEnabled = inputs.addNodeText.length > 0;
   useEffect(() => {
-    console.log('fields', fields);
     setFields(todoList);
   }, [todoList]);
+
+  const applyFilter = showDone => {
+    console.log('todoList', typeof todoList, showDone);
+    if (showDone) {
+      setFields(todoList.filter(x => x.isDone));
+    } else if (!showDone) {
+      setFields(todoList.filter(x => !x.isDone));
+    } else {
+      setFields(todoList);
+    }
+  };
 
   return (
     <div>
@@ -78,7 +88,7 @@ const ToDoApp = ({
           value={inputs.addNodeText}
           onChange={handleInputChange}
         />
-        {isEnabled ? (
+        {!isHidden ? (
           <button
             type="button"
             value={inputs.addNodeText}
@@ -95,24 +105,30 @@ const ToDoApp = ({
           <li key={item.id}>
             <Div>
               {!item.isEdit ? (
-                <Div>
-                  <span>{item.text}</span>
-                  <button
-                    type="button"
-                    value={item.id}
-                    onClick={onRemoveItemFromToDoList}
-                  >
-                    Remove
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onToggleItemEditMode.bind(this, item.id, true)}
-                  >
-                    Update
-                  </button>
-                </Div>
+                <DivSpaceBetween>
+                  <Div>
+                    <input type="checkbox" />
+                    <span>{item.text}</span>
+                  </Div>
+
+                  <Div>
+                    <button
+                      type="button"
+                      value={item.id}
+                      onClick={onRemoveItemFromToDoList}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onToggleItemEditMode.bind(this, item.id, true)}
+                    >
+                      Update
+                    </button>
+                  </Div>
+                </DivSpaceBetween>
               ) : (
-                <Div>
+                <DivSpaceBetween>
                   <Input
                     type="text"
                     value={item.text || ''}
@@ -120,19 +136,40 @@ const ToDoApp = ({
                   />
                   <button
                     type="button"
-                    onClick={onToggleItemEditMode.bind(this, item.id, false)}
+                    onClick={onChangeItemInToDoList.bind(this, {
+                      item,
+                      isEdit: false,
+                    })}
                   >
                     Save
                   </button>
-                </Div>
+                  <button
+                    type="button"
+                    onClick={onToggleItemEditMode.bind(this, item.id, false)}
+                  >
+                    Cancel
+                  </button>
+                </DivSpaceBetween>
               )}
             </Div>
           </li>
         ))}
       </ul>
-      <span>Show all</span>
-      <span>Show done</span>
-      <span>Show show in progress</span>
+      <Div>
+        <button type="button" onClick={applyFilter.bind(this, null)}>
+          Show all
+        </button>
+      </Div>
+      <Div>
+        <button type="button" onClick={applyFilter.bind(this, false)}>
+          Show show in progress
+        </button>
+      </Div>
+      <Div>
+        <button type="button" onClick={applyFilter.bind(this, true)}>
+          Show done
+        </button>
+      </Div>
       <Div />
     </div>
   );
@@ -140,11 +177,10 @@ const ToDoApp = ({
 
 ToDoApp.propTypes = {
   todoList: PropTypes.array,
-  itemText: PropTypes.string,
-  dispatch: PropTypes.func.isRequired,
   onAddItemToToDoList: PropTypes.func,
   onRemoveItemFromToDoList: PropTypes.func,
   onToggleItemEditMode: PropTypes.func,
+  onChangeItemInToDoList: PropTypes.func,
 };
 
 const mapStateToProps = createStructuredSelector({
@@ -159,8 +195,9 @@ function mapDispatchToProps(dispatch) {
     },
     onRemoveItemFromToDoList: evt =>
       dispatch(removeItemFromToDoList(evt.currentTarget.value)),
-    onChangeItemInToDoList: evt =>
-      dispatch(changeItemInDoList(evt.currentTarget.value)),
+    onChangeItemInToDoList: updateObject => {
+      dispatch(changeItemInDoList(updateObject.item, updateObject.isEdit));
+    },
     onToggleItemEditMode: (id, isEdit) =>
       dispatch(toggleItemEditMode(id, isEdit)),
     dispatch,

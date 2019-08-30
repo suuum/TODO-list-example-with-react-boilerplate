@@ -32,10 +32,11 @@ export function removeItemFromToDoList(itemId) {
   };
 }
 
-export function changeItemInDoList(item) {
+export function changeItemInDoList(item, isEdit) {
   return {
     type: CHANGE_TODOLIST_ITEM,
     item,
+    isEdit,
   };
 }
 
